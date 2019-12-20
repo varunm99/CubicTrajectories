@@ -12,19 +12,17 @@ close all
 
 
 % Trajectory key points
-kp = [0 0;
+kp = [1, 0;
 0.1 0.3;
 0.4 0.7;
 0.5 0;
-0.4 -0.5;
 1 -1];
 
 times = [0;
     3.5;
     5;
     7.5;
-    10;
-    12.5];
+    10];
 
 
 %%
@@ -37,8 +35,8 @@ times = [0;
 % constrains the robot's acceleration, velocity, and position at the key
 % points.  
 
-px = generatePolynomial(times(2:end), kp(2:end,1)');
-py = generatePolynomial(times(2:end), kp(2:end,2)');
+px = generatePolynomial(times, kp(:,1)');
+py = generatePolynomial(times, kp(:,2)');
 
 %% 
 % Open plot
@@ -64,6 +62,8 @@ T = 0:dt:times(end);
 % Create empty vector to store 
 actual_tr = zeros(2,size(T,1));
 plan_tr = zeros(2, size(T,1));
+plan_tr(:, 1) = [xt;yt];
+actual_tr(:, 1) = [xt;yt];
 
 % Controller parameters
 Kp = 1;
@@ -124,7 +124,7 @@ legend("Robot", "Actual Trajectory", "Desired Trajectory");
 
 figure(2)
 subplot(2,2,1)
-plot(T, [diff(plan_tr(1,:))])
+plot(T, diff(plan_tr(1,:)))
 title("X Velocities");
 xlabel("t");
 ylabel("v_x");
@@ -134,7 +134,7 @@ title("X Accelerations");
 xlabel("t");
 ylabel("a_x");
 subplot(2,2,3)
-plot(T, [diff(plan_tr(2,:))])
+plot(T, diff(plan_tr(2,:)))
 title("Y Velocities")
 ylabel("v_y");
 xlabel("t");
@@ -164,36 +164,3 @@ title("Y pos")
 % inverted to return a vector containing all desired polynomial
 % coefficients. 
 
-function traj = generatePolynomial(times, points)
-    mat = zeros(length(points)*4);
-    constraints = zeros(length(points)*4, 1);
-    mat(1:5, 1:4) = [1 0 0 0; ...
-                    0 1 0 0; ...
-                    1 times(1) times(1)^2 times(1)^3; ...
-                    0 1 2*times(1) 3*times(1)^2; ...
-                    0 0 2 6*times(1)];
-    constraints(1:4) = [0; 0; points(1); 0];
-    mat(end-4:end, end-3:end) = [0 -1 0 0;...
-                                0 0 -2 0;...
-                                1 0 0 0;...
-                                1 times(end)-times(end-1) (times(end)-times(end-1))^2 (times(end)-times(end-1))^3;...
-                                0 1 2*(times(end)-times(end-1)) 3*(times(end)-times(end-1))^2];
-    constraints(end-3:end) = [0; points(end-1); points(end); 0];
-    for n = 2:length(points)-1
-        td = times(n)-times(n-1);
-        mat(4*(n-1):4*(n-1) + 5, 4*(n-1)+1:4*(n-1) + 4) = [ ...
-            0 -1 0 0; ...
-            0 0 -2 0; ...
-            1 0 0 0; ...
-            1 td td^2 td^3; ...
-            0 1 2*td 3*td^2; ...
-            0 0 2 6*td
-            ];
-        constraints(4*(n-1) + 1:4*n) = [0; points(n-1); points(n); 0];
-    end
-    polya = mat\constraints;
-    traj = zeros(length(points), 4);
-    for n = 1:length(points)
-        traj(n,:) = flip(polya((n-1)*4 + 1 : n*4));
-    end
-end
